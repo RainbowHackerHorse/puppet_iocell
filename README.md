@@ -31,7 +31,7 @@ jail { 'myjail1':
   ip6_addr  => 'em0|fc00::10/64',
   hostname  => 'myjail1.example.com',
   boot      => 'on',
-  pcpu		=> '20'
+  pcpu      => '20'
   memoryuse => '4G',
   quota     => '15G',
   release   => '11.1-RELEASE'
