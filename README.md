@@ -1,6 +1,6 @@
 # FreeBSD Jail management with Puppet, using iocell
 
-[![Puppet Forge](https://img.shields.io/puppetforge/v/hackerhorse/iocell.svg)](https://forge.puppet.com/hackerhorse/iocell) [![Build Status](https://travis-ci.org/RainbowHackerHorse/puppet_iocell.svg?branch=master)](https://travis-ci.org/RainbowHackerHorse/puppet_iocell)
+[![Puppet Forge](https://img.shields.io/puppetforge/v/hackerhorse/iocell.svg)](https://forge.puppet.com/hackerhorse/iocell)
 
 Manage FreeBSD jails with Puppet, leveraging [iocell] for jail management.
 
