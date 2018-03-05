@@ -1,5 +1,5 @@
 {
-  "name": "iocage",
+  "name": "hackerhorse-iocell",
   "version": "4.0.0",
   "author": "hackerhorse",
   "summary": "Jail management with Puppet, using iocell",
