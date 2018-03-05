@@ -1,5 +1,9 @@
 ## Unreleased
 
+## 2018-03-04
+#### Summary
+Forked to RainbowHackerHorse/puppet_iocell to strictly support iocell
+
 ## 2016-08-29 3.1.0
 #### Summary
 Drop old puppet versions, add tests for existing functionality.

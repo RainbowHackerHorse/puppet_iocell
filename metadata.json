@@ -1,18 +1,18 @@
 {
-  "name": "zleslie-jail",
-  "version": "3.2.0",
-  "author": "zleslie",
-  "summary": "Jail management with Puppet",
+  "name": "iocage",
+  "version": "4.0.0",
+  "author": "hackerhorse",
+  "summary": "Jail management with Puppet, using iocell",
   "license": "Apache-2.0",
-  "source": "git://github.com/xaque208/puppet-jail.git",
-  "project_page": "https://github.com/xaque208/puppet-jail",
-  "issues_url": "https://github.com/xaque208/puppet-jail/issues",
-  "tags": ["FreeBSD", "jails", "containers", "iocage", "zfs"],
+  "source": "git://github.com/RainbowHackerHorse/puppet_iocell.git",
+  "project_page": "https://github.com/RainbowHackerHorse/puppet_iocell",
+  "issues_url": "https://github.com/RainbowHackerHorse/puppet_iocell/issues",
+  "tags": ["FreeBSD", "jails", "containers", "iocell", "zfs"],
   "operatingsystem_support": [
     {
       "operatingsystem": "FreeBSD",
       "operatingsystemrelease": [
-        "10"
+        "11"
       ]
     }
   ],
