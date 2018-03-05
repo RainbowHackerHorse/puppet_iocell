@@ -7,7 +7,17 @@
   "source": "git://github.com/RainbowHackerHorse/puppet_iocell.git",
   "project_page": "https://github.com/RainbowHackerHorse/puppet_iocell",
   "issues_url": "https://github.com/RainbowHackerHorse/puppet_iocell/issues",
-  "tags": ["FreeBSD", "jails", "containers", "iocell", "zfs"],
+  "dependencies": [
+    {"name":"puppetlabs/concat","version_requirement":">= 1.1.0 <= 5.0.0"}
+  ],
+  "data_provider": null,
+  "tags": [
+    "FreeBSD",
+    "jails",
+    "containers",
+    "iocell",
+    "zfs"
+  ],
   "operatingsystem_support": [
     {
       "operatingsystem": "FreeBSD",
@@ -21,8 +31,5 @@
       "name": "puppet",
       "version_requirement": ">= 4.0.0 < 5.0.0"
     }
-  ],
-  "dependencies": [
-    { "name": "puppetlabs/concat", "version_requirement": ">= 1.1.0 <= 5.0.0" }
   ]
 }
