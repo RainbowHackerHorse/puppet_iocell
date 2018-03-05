@@ -1,6 +1,6 @@
 {
   "name": "hackerhorse-iocell",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "author": "hackerhorse",
   "summary": "Jail management with Puppet, using iocell",
   "license": "Apache-2.0",

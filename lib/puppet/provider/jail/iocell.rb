@@ -1,33 +1,29 @@
 require 'tempfile'
 
-Puppet::Type.type(:jail).provide(:pyiocage) do
-  desc 'Manage jails using iocage(8)'
+Puppet::Type.type(:jail).provide(:iocell) do
+  desc 'Manage jails using iocell(8)'
   confine    kernel: :freebsd
   defaultfor kernel: :freebsd
 
-  # this is used for further confinement
-  commands iocage: '/usr/local/bin/iocage'
-
-  def self.pyiocage(*args)
-    cmd = ['/usr/local/bin/iocage', args].flatten.join(' ')
-    execute(cmd, override_locale: false)
-  end
+  commands iocell: '/usr/local/sbin/iocell'
 
   mk_resource_methods
 
-  def self.jail_list
-    # first, get the fields. We take them from -t, hoping this is less stuff
-    fields = pyiocage('list', '-lt').split("\n")[1].downcase.split(%r{\s+|\s+}).reject { |f| f == '|' }
-    output  = pyiocage('list', '-Htl').split("\n")
-    output += pyiocage('list', '-Hl').split("\n")
+  def self.jail_list(*args)
+    output = iocell(['list', args].flatten).split("\n")
+    fields = output.shift.split.map { |i| i.downcase.to_sym }
 
     data = []
 
     output.each do |j|
       jail_data = {}
-      values = j.split(%r{\s+})
+      values = j.split
+
+      iocell_jail_list_regex = %r{^(-|[0-9]+)\s+([[:xdigit:]]{8}-([[:xdigit:]]{4}-){3})[[:xdigit:]]{12}\s+(on|off)\s+(up|down)\s+.+$}
+      next if iocell_jail_list_regex.match(j).nil?
+
       values.each_index do |i|
-        jail_data[fields[i].to_sym] = values[i]
+        jail_data[fields[i]] = values[i]
       end
       data << jail_data
     end
@@ -44,10 +40,13 @@ Puppet::Type.type(:jail).provide(:pyiocage) do
   end
 
   def self.instances
-    jail_list.map do |j|
-      jensure = j[:type] == 'template' ? :template : :present
+    [jail_list, jail_list('-t')].each.map do |j|
+      all_properties = get_jail_properties(j[:tag])
+
+      jensure = all_properties['template'] == 'yes' ? :template : :present
+
       jail_properties = {
-        provider: :pyiocage,
+        provider: :iocell,
         ensure: jensure,
         name: j[:tag],
         state: j[:state],
@@ -56,12 +55,15 @@ Puppet::Type.type(:jail).provide(:pyiocage) do
 
       jail_properties[:jid] = j[:jid] if j[:jid] != '-'
 
-      all_properties = get_jail_properties(j[:tag])
-
       extra_properties = [
         :ip4_addr,
         :ip6_addr,
         :hostname,
+        :pcpu,
+        :memoryuse,
+        :quota,
+        :release,
+        :rlimits,
         :jail_zfs,
         :jail_zfs_dataset
       ]
@@ -83,7 +85,7 @@ Puppet::Type.type(:jail).provide(:pyiocage) do
 
   def self.get_jail_properties(jailname)
     data = {}
-    output = pyiocage('get', 'all', jailname)
+    output = iocell(['get', 'all', jailname])
     output.lines.each do |l|
       key, value = l.split(':', 2)
       data[key] = value.chomp
@@ -112,12 +114,12 @@ Puppet::Type.type(:jail).provide(:pyiocage) do
   end
 
   def restart
-    iocage(['stop', resource[:name]])
-    iocage(['start', resource[:name]])
+    iocell(['stop', resource[:name]])
+    iocell(['start', resource[:name]])
   end
 
   def set_property(property, value)
-    iocage(['set', "#{property}=#{value}", resource[:name]])
+    iocell(['set', "#{property}=#{value}", resource[:name]])
   end
 
   def state=(value)
@@ -140,6 +142,26 @@ Puppet::Type.type(:jail).provide(:pyiocage) do
     @property_flush[:hostname] = value
   end
 
+  def pcpu=(value)
+    @property_flush[:pcpu] = value
+  end
+
+  def memoryuse=(value)
+    @property_flush[:memoryuse] = value
+  end
+
+  def quota=(value)
+    @property_flush[:quota] = value
+  end
+
+  def release=(value)
+    @property_flush[:release] = value
+  end
+
+  def rlimits=(value)
+    @property_flush[:rlimits] = value
+  end
+
   def jail_zfs=(value)
     @property_flush[:jail_zfs] = value
   end
@@ -148,72 +170,53 @@ Puppet::Type.type(:jail).provide(:pyiocage) do
     @property_flush[:jail_zfs_dataset] = value
   end
 
-  def pkglist=(value)
-    @property_flush[:pkglist] = value
-  end
-
-  def wrap_create(jensure = resource[:ensure])
-    frel = Facter.value(:os)['release']['full'].gsub(%r{-p\d+$}, '')
-
-    template = resource[:template] ? "--template=#{resource[:template]}" : nil
-    release = resource[:release] ? "--release=#{resource[:release]}" : "--release=#{frel}"
-    from = template.nil? ? release : template
-
-    create_template = jensure == :template ? 'template=yes' : nil
-
-    unless resource[:pkglist].empty?
-      pkgfile = Tempfile.new('puppet-iocage-pkglist.json')
-      pkgfile.write({ pkgs: resource[:pkglist] }.to_json)
-      pkgfile.close
-      pkglist = "--pkglist=#{pkgfile.path}"
-    end
-    iocage(['create', '--force', from, pkglist, create_template, "tag=#{resource[:name]}"].compact)
-  end
-
-  def wrap_destroy
-    iocage(['stop', resource[:name]])
-    iocage(['destroy', '--force', resource[:name]])
-  end
-
-  def update
-    wrap_destroy
-    wrap_create
-  end
-
   def flush
     if @property_flush
-      Puppet.debug "JailPyIocage(#flush): #{@property_flush}"
+      Puppet.debug "JailIocell(#flush): #{@property_flush}"
 
       pre_start_properties = [
         :boot,
         :ip4_addr,
         :ip6_addr,
         :hostname,
+        :pcpu,
+        :memoryuse,
+        :quota,
+        :release,
+        :rlimits,
         :jail_zfs,
         :jail_zfs_dataset
       ]
 
+      unless resource[:pkglist].empty?
+        pkgfile = Tempfile.new('puppet-iocell-pkg.list')
+        pkgfile.write(resource[:pkglist].join("\n"))
+        pkgfile.close
+        pkglist = "--pkglist=#{pkgfile.path}"
+      end
+
       case resource[:ensure]
       when :absent
-        wrap_destroy
+        iocell(['stop', resource[:name]])
+        iocell(['destroy', '-f', resource[:name]])
       when :present
-        wrap_create(:present)
+        iocell(['create', '-c', pkglist, "tag=#{resource[:name]}"].compact)
       when :template
-        wrap_create(:template)
+        iocell(['create', '-c', pkglist, "tag=#{resource[:name]}"].compact)
+        set_property('template', 'yes')
       end
 
       if resource[:state] == :up && resource[:ensure] == :present
         pre_start_properties.each do |p|
           set_property(p.to_s, resource[p]) if resource[p]
         end
-        iocage(['start', resource[:name]])
+        iocell(['start', resource[:name]])
         if resource[:user_data]
-          tmpfile = Tempfile.new('puppet-iocage')
+          tmpfile = Tempfile.new('puppet-iocell')
           tmpfile.write(resource[:user_data])
           tmpfile.close
-          execute("/usr/local/bin/iocage exec #{resource[:name]} /bin/sh",
-                  stdinfile: tmpfile.path,
-                  override_locale: false)
+          execute("/usr/local/sbin/iocell exec #{resource[:name]} /bin/sh",
+                  stdinfile: tmpfile.path)
           tmpfile.delete
         end
       end
@@ -230,10 +233,10 @@ Puppet::Type.type(:jail).provide(:pyiocage) do
         case resource[:state]
         when :up
           need_restart = false
-          iocage(['start', resource[:name]])
+          iocell(['start', resource[:name]])
         when :down
           need_restart = false
-          iocage(['stop', resource[:name]])
+          iocell(['stop', resource[:name]])
         end
       end
 
